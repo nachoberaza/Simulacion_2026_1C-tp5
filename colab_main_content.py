@@ -50,7 +50,7 @@ df_triage     = pd.read_csv(PATH_CSV_TRIAGE)
 df_edstays    = pd.read_csv(PATH_CSV_EDSTAYS)
 
 # =============================================================================
-# 3. ANÁLISIS EXPLORATORIO DE DATOS — Dataset principal
+# 3. ANÁLISIS EXPLORATORIO DE DATOS — Dataset principal (Hospital ER_Data.csv)
 # =============================================================================
 
 print("=== Hospital ER_Data.csv ===")
@@ -62,7 +62,7 @@ print(Atenciones_ER.shape)
 print(Atenciones_ER.dtypes)
 
 # =============================================================================
-# 4. PREPARACIÓN DE DATOS — Dataset principal
+# 4. PREPARACIÓN DE DATOS — Dataset principal (Hospital ER_Data.csv)
 # =============================================================================
 
 # ── Intervalo entre llegadas (IA_min) ─────────────────────────────────────────
