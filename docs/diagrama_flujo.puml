@@ -1,0 +1,47 @@
+@startuml
+
+title Método correr() - Simulación Hospitalaria
+
+start
+
+:Inicializar simulación;
+note right
+Se programa
+la primera llegada
+end note
+
+while (¿Hay eventos\nY tiempo_actual < tiempo_fin?) is (Sí)
+
+    :Obtener próximo evento\n(DE LA TEF);
+
+    :Actualizar tiempo_actual\ncon evento.tiempo;
+
+    if (¿Evento = LLEGADA?) then (Sí)
+
+        :procesar_llegada(evento);
+
+    else (No)
+
+        if (¿Evento = SALIDA_ESPECIALISTA?) then (Sí)
+
+            :procesar_salida_especialista(evento);
+
+        else (No)
+
+            if (¿Evento = SALIDA_CLINICO?) then (Sí)
+
+                :procesar_salida_clinico(evento);
+
+            endif
+
+        endif
+
+    endif
+
+endwhile (No)
+
+:mostrar_resultados();
+
+stop
+
+@enduml

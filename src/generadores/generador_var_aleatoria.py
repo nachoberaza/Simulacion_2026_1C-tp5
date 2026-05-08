@@ -1,3 +1,6 @@
+from dominio.enums import NivelUrgencia
+
+
 class GeneradorVariablesAleatorias:
 
     def generar_intervalo_arribo(self):
