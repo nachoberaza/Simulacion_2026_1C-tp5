@@ -84,7 +84,7 @@ class SimulacionHospital:
         paciente = Paciente(
             id_paciente=self.id_paciente,
             tiempo_llegada=tiempo_llegada,
-            nivel_urgencia=self.generador.generar_nivel_urgencia()
+            nivel_urgencia=self.generador.generar_nivel_urgencia(self.turno_actual)
         )
 
         self.id_paciente += 1
