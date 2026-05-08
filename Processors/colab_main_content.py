@@ -41,8 +41,8 @@ PATH_CSV_EDSTAYS_DRIVE = '/content/drive/MyDrive/Colab Notebooks/TPs/TP4/Datos/e
 
 # ── Paths local
 PATH_CSV_MAIN    = 'CSV/Hospital ER_Data.csv'
-PATH_CSV_TRIAGE  = 'CSV/triage.csv'
-PATH_CSV_EDSTAYS = 'CSV/edstays.csv'
+PATH_CSV_TRIAGE  = '../CSV/triage.csv'
+PATH_CSV_EDSTAYS = '../CSV/edstays.csv'
 
 # ── Carga de datasets (alternar entre Drive y local según entorno)
 Atenciones_ER = pd.read_csv(PATH_CSV_MAIN)
