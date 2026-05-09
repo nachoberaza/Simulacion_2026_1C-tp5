@@ -14,17 +14,17 @@
 import random
 from dominio.enums import NivelUrgencia, Turno
 
-from generadores.generador_IA import cargar_generador_desde_json as cargar_ia
-from generadores.generador_triage import cargar_generador_desde_json as cargar_triage
-from generadores.generador_tiempo_atencion import cargar_generador_desde_json as cargar_tiempo
+from generadores.generador_IA import cargar_generador_desde_json as generador_ia
+from generadores.generador_triage import cargar_generador_desde_json as generador_triage
+from generadores.generador_tiempo_atencion import cargar_generador_desde_json as generador_tiempo_atencion
 
 
 class GeneradorVariablesAleatorias:
 
     def __init__(self):
-        self._gen_ia      = cargar_ia()
-        self._gen_triage  = cargar_triage()
-        self._gen_tiempo  = cargar_tiempo()
+        self._gen_ia      = generador_ia()
+        self._gen_triage  = generador_triage()
+        self._gen_tiempo  = generador_tiempo_atencion()
 
     # ------------------------------------------------------------------
     # INTERVALO ENTRE ARRIBOS
@@ -57,19 +57,12 @@ class GeneradorVariablesAleatorias:
     # TIEMPOS DE ATENCIÓN
     # ------------------------------------------------------------------
 
-    def generar_tiempo_atencion_especialista(self) -> float:
+    def generar_tiempo_atencion(self) -> float:
         """
         Genera un tiempo de atención para especialista (minutos).
         Usa la FDP ajustada en generador_tiempo_atencion.py.
         """
         return self._gen_tiempo.generar()
-
-    def generar_tiempo_atencion_clinico(self) -> float:
-        """
-        Genera un tiempo de atención clínico (minutos).
-        Usa la FDP ajustada en generador_tiempo_atencion.py.
-        """
-        return self._gen_tiempo.generar_clinico()
 
     # ------------------------------------------------------------------
     # PROBABILIDAD DE ABANDONO

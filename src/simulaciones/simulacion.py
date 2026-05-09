@@ -167,7 +167,7 @@ class SimulacionHospital:
 
         tiempo_atencion = (
             self.generador_va
-            .generar_tiempo_atencion_especialista()
+            .generar_tiempo_atencion()
         )
 
         evento_salida = Evento(
@@ -225,7 +225,7 @@ class SimulacionHospital:
 
         tiempo_atencion = (
             self.generador_va
-            .generar_tiempo_atencion_clinico()
+            .generar_tiempo_atencion()
         )
 
         evento_salida = Evento(
