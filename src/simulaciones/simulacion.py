@@ -1,3 +1,10 @@
+import heapq
+from collections import deque
+
+from dominio.enums import Turno, TipoEvento, TipoPaciente, NivelUrgencia
+from dominio.evento import Evento
+from dominio.paciente import Paciente
+from dominio.recurso_medico import RecursoMedico
 from generadores.generador_var_aleatoria import GeneradorVariablesAleatorias
 
 

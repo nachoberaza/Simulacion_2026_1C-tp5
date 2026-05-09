@@ -18,7 +18,7 @@ import json
 # CONFIGURACIÓN
 # =============================================================================
 
-PATH_CSV = "../CSV/Hospital_ER_Data.csv"
+PATH_CSV = "../../CSV/Hospital_ER_Data2.csv"
 DATE_COL = "Patient Admission Date"
 
 BINS_HIST = 50
@@ -70,6 +70,7 @@ def cargar_datos():
 
     df["PatientAdmissionDate_dt"] = pd.to_datetime(
         df[DATE_COL],
+        format="mixed",
         dayfirst=True
     )
 

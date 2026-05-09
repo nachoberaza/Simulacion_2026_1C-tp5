@@ -29,8 +29,8 @@ from dominio.enums import NivelUrgencia, Turno
 # CONFIGURACIÓN
 # =============================================================================
 
-PATH_CSV_TRIAGE = "../CSV/triage.csv"
-PATH_CSV_MAIN   = "../CSV/Hospital_ER_Data.csv"
+PATH_CSV_TRIAGE = "../../CSV/triage.csv"
+PATH_CSV_MAIN   = "../../CSV/Hospital_ER_Data2.csv"
 DATE_COL        = "Patient Admission Date"
 ACUITY_COL      = "acuity"
 CONFIG_OUTPUT   = "../distribuciones/triage_config.json"
@@ -138,7 +138,7 @@ def cargar_datos():
 
     df_main = pd.read_csv(PATH_CSV_MAIN)
     df_main["PatientAdmissionDate_dt"] = pd.to_datetime(
-        df_main[DATE_COL], dayfirst=True
+        df_main[DATE_COL], format="mixed", dayfirst=True
     )
     df_main = df_main.sort_values("PatientAdmissionDate_dt").reset_index(drop=True)
 
