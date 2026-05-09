@@ -19,7 +19,7 @@
 #   T2 — Tarde  : 15:00 – 23:00
 #   T3 — Noche  : 23:00 – 07:00
 # =============================================================================
-
+from pathlib import Path
 import pandas as pd
 import numpy as np
 import json
@@ -33,7 +33,8 @@ PATH_CSV_TRIAGE = "../../CSV/triage.csv"
 PATH_CSV_MAIN   = "../../CSV/Hospital_ER_Data2.csv"
 DATE_COL        = "Patient Admission Date"
 ACUITY_COL      = "acuity"
-CONFIG_OUTPUT   = "../distribuciones/triage_config.json"
+
+CONFIG_PATH = Path(__file__).parent / "distribuciones" / "triage_config.json"
 
 # Niveles en el CSV (ESI 1-5)
 NIVELES_CSV = [1, 2, 3, 4, 5]
@@ -196,12 +197,12 @@ def calcular_proporciones_por_turno(df) -> dict:
 
 def guardar_configuracion(proporciones: dict):
     config = {"proporciones_por_turno": proporciones}
-    with open(CONFIG_OUTPUT, "w") as f:
+    with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=4)
-    print(f"\n[OK] Configuración guardada en: {CONFIG_OUTPUT}")
+    print(f"\n[OK] Configuración guardada en: {CONFIG_PATH}")
 
 
-def cargar_generador_desde_json(path: str) -> GeneradorTriage:
+def cargar_generador_desde_json(path=CONFIG_PATH) -> GeneradorTriage:
     with open(path, "r") as f:
         data = json.load(f)
     return GeneradorTriage(data["proporciones_por_turno"])

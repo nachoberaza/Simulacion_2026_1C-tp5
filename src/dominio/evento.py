@@ -1,4 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from dominio.enums import TipoEvento
+from dominio.paciente import Paciente
+
 
 @dataclass(order=True)
 class Evento:

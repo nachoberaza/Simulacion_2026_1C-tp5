@@ -7,7 +7,7 @@
 #   3. Permite generar valores aleatorios
 #      para usar directamente en la simulación
 # =============================================================================
-
+from pathlib import Path
 from fitter import Fitter
 from scipy import stats
 import pandas as pd
@@ -23,7 +23,7 @@ DATE_COL = "Patient Admission Date"
 
 BINS_HIST = 50
 
-CONFIG_OUTPUT = "../distribuciones/ia_config.json"
+CONFIG_PATH = Path(__file__).parent / "distribuciones" / "ia_config.json"
 
 
 class GeneradorIA:
@@ -130,7 +130,7 @@ def guardar_configuracion(nombre, params):
         "params": params
     }
 
-    with open(CONFIG_OUTPUT, "w") as f:
+    with open(CONFIG_PATH, "w") as f:
 
         json.dump(
             config,
@@ -139,9 +139,9 @@ def guardar_configuracion(nombre, params):
         )
 
     print(f"\n[OK] Configuración guardada en:")
-    print(CONFIG_OUTPUT)
+    print(CONFIG_PATH)
 
-def cargar_generador_desde_json(path):
+def cargar_generador_desde_json(path=CONFIG_PATH):
 
     with open(path, "r") as f:
 

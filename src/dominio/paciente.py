@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+from dominio.enums import NivelUrgencia, TipoPaciente
+
+
 @dataclass
 class Paciente:
 

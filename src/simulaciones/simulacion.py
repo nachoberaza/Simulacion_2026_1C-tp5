@@ -10,25 +10,25 @@ from generadores.generador_var_aleatoria import GeneradorVariablesAleatorias
 
 class SimulacionHospital:
 
-    def __init__(self, tiempo_fin):
+    def __init__(self, tiempo_fin, npe, npc, turno_actual):
 
         self.tiempo_actual = 0
         self.tiempo_fin = tiempo_fin
 
-        self.generador = GeneradorVariablesAleatorias()
+        self.generador_va = GeneradorVariablesAleatorias()
 
         # -------------------------------------------------
         # TURNO ACTUAL
         # -------------------------------------------------
 
-        self.turno_actual = Turno.MANIANA
+        self.turno_actual = turno_actual
 
         # -------------------------------------------------
         # RECURSOS
         # -------------------------------------------------
 
-        self.especialistas = RecursoMedico(cantidad=3)
-        self.clinicos = RecursoMedico(cantidad=2)
+        self.especialistas = RecursoMedico(cantidad=npe)
+        self.clinicos = RecursoMedico(cantidad=npc)
 
         # -------------------------------------------------
         # COLAS
@@ -58,6 +58,9 @@ class SimulacionHospital:
         self.pacientes_atendidos_especialista = 0
         self.pacientes_atendidos_clinico = 0
 
+        self.tiempo_permanencia_especialista = 0
+        self.tiempo_permanencia_clinico = 0
+
     # =====================================================
     # INICIALIZACION
     # =====================================================
@@ -84,14 +87,14 @@ class SimulacionHospital:
 
     def programar_proxima_llegada(self):
 
-        intervalo = self.generador.generar_intervalo_arribo()
+        intervalo = self.generador_va.generar_intervalo_arribo()
 
         tiempo_llegada = self.tiempo_actual + intervalo
 
         paciente = Paciente(
             id_paciente=self.id_paciente,
             tiempo_llegada=tiempo_llegada,
-            nivel_urgencia=self.generador.generar_nivel_urgencia(self.turno_actual)
+            nivel_urgencia=self.generador_va.generar_nivel_urgencia(self.turno_actual)
         )
 
         self.id_paciente += 1
@@ -163,7 +166,7 @@ class SimulacionHospital:
         self.tiempo_espera_especialista += espera
 
         tiempo_atencion = (
-            self.generador
+            self.generador_va
             .generar_tiempo_atencion_especialista()
         )
 
@@ -221,7 +224,7 @@ class SimulacionHospital:
         self.tiempo_espera_clinico += espera
 
         tiempo_atencion = (
-            self.generador
+            self.generador_va
             .generar_tiempo_atencion_clinico()
         )
 
@@ -240,6 +243,10 @@ class SimulacionHospital:
     def procesar_salida_especialista(self, evento):
 
         self.pacientes_atendidos_especialista += 1
+        evento.paciente.tiempo_salida = self.tiempo_actual
+        self.tiempo_permanencia_especialista += (
+                evento.paciente.tiempo_salida - evento.paciente.tiempo_llegada
+        )
 
         if len(self.cola_especialistas) > 0:
 
@@ -254,6 +261,10 @@ class SimulacionHospital:
     def procesar_salida_clinico(self, evento):
 
         self.pacientes_atendidos_clinico += 1
+        evento.paciente.tiempo_salida = self.tiempo_actual
+        self.tiempo_permanencia_clinico += (
+                evento.paciente.tiempo_salida - evento.paciente.tiempo_llegada
+        )
 
         if len(self.cola_clinicos) > 0:
 
@@ -272,7 +283,7 @@ class SimulacionHospital:
     def debe_abandonar(self, longitud_cola):
 
         probabilidad = (
-            self.generador
+            self.generador_va
             .generar_probabilidad_abandono()
         )
 
@@ -313,47 +324,40 @@ class SimulacionHospital:
 
                 self.procesar_salida_clinico(evento)
 
-        self.mostrar_resultados()
+        self.obtener_resultados()
 
     # =====================================================
     # RESULTADOS
     # =====================================================
 
-    def mostrar_resultados(self):
-
-        print("\n========== RESULTADOS ==========")
-
-        if self.pacientes_atendidos_especialista > 0:
-
-            promedio_esp = (
-                self.tiempo_espera_especialista /
-                self.pacientes_atendidos_especialista
-            )
-
-            print(
-                f"Tiempo promedio espera especialista: "
-                f"{promedio_esp:.2f}"
-            )
-
-        if self.pacientes_atendidos_clinico > 0:
-
-            promedio_cli = (
-                self.tiempo_espera_clinico /
-                self.pacientes_atendidos_clinico
-            )
-
-            print(
-                f"Tiempo promedio espera clínico: "
-                f"{promedio_cli:.2f}"
-            )
-
-        print(
-            f"Pacientes derivados: "
-            f"{self.pacientes_derivados}"
+    def obtener_resultados(self):
+        promedio_espera_esp = (
+            self.tiempo_espera_especialista / self.pacientes_atendidos_especialista
+            if self.pacientes_atendidos_especialista > 0 else 0
+        )
+        promedio_espera_cli = (
+            self.tiempo_espera_clinico / self.pacientes_atendidos_clinico
+            if self.pacientes_atendidos_clinico > 0 else 0
+        )
+        promedio_perm_esp = (
+            self.tiempo_permanencia_especialista / self.pacientes_atendidos_especialista
+            if self.pacientes_atendidos_especialista > 0 else 0
+        )
+        promedio_perm_cli = (
+            self.tiempo_permanencia_clinico / self.pacientes_atendidos_clinico
+            if self.pacientes_atendidos_clinico > 0 else 0
         )
 
-        print(
-            f"Pacientes abandonan: "
-            f"{self.pacientes_abandonan}"
-        )
-
+        return {
+            "turno": self.turno_actual.name,
+            "npe": self.especialistas.cantidad_total,
+            "npc": self.clinicos.cantidad_total,
+            "tpe_especialista": round(promedio_espera_esp, 2),
+            "tpe_clinico": round(promedio_espera_cli, 2),
+            "tpps_especialista": round(promedio_perm_esp, 2),
+            "tpps_clinico": round(promedio_perm_cli, 2),
+            "pacientes_derivados": self.pacientes_derivados,
+            "pacientes_abandonan": self.pacientes_abandonan,
+            "atendidos_especialista": self.pacientes_atendidos_especialista,
+            "atendidos_clinico": self.pacientes_atendidos_clinico,
+        }
