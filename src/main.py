@@ -20,15 +20,15 @@ if __name__ == "__main__":
     for escenario in escenarios:
         simulacion = SimulacionHospital(
             tiempo_fin=TIEMPO_FIN,
-            npe=escenario["npe"],
-            npc=escenario["npc"],
-            turno_actual=escenario["turno"],
-            escenario=escenario["tipo"],
+            npe=escenario['npe'],
+            npc=escenario['npc'],
+            turno_actual=escenario['turno'],
+            escenario=escenario['tipo'],
         )
         simulacion.correr()
         resultado = simulacion.obtener_resultados()
         resultados.append(resultado)
-        print(f"OK — Turno: {resultado['turno']} | NPe: {resultado['npe']} | NPc: {resultado['npc']}")
+        print(f"OK — Turno: {resultado['turno']} | Escenario: {escenario['tipo']} | NPe: {resultado['npe']} | NPc: {resultado['npc']}")
 
     # Persistir en CSV
     campos = list(resultados[0].keys())

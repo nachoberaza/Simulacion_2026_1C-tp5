@@ -11,6 +11,7 @@ import json
 PATH_CSV = "../../CSV/Hospital_ER_Data2.csv"
 DATE_COL = "Patient Admission Date"
 BINS_HIST = 50
+ESCENARIO_DEFAULT = "ocioso"
 
 DIST_DIR = Path(__file__).parent / "distribuciones"
 
@@ -136,7 +137,7 @@ def main():
     print("\n[OK] Configs generados para los 3 turnos.")
     print("\nEjemplos de generación:")
     for turno in ["maniana", "tarde", "noche"]:
-        gen = cargar_generador_desde_json(turno)
+        gen = cargar_generador_desde_json(turno, escenario=ESCENARIO_DEFAULT)
         vals = [round(gen.generar(), 2) for _ in range(5)]
         print(f"  {turno}: {vals}")
 

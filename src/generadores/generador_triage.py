@@ -24,6 +24,7 @@ import pandas as pd
 import numpy as np
 import json
 from dominio.enums import NivelUrgencia, Turno
+from generadores.generador_IA import ESCENARIO_DEFAULT
 
 # =============================================================================
 # CONFIGURACIÓN
@@ -195,9 +196,9 @@ def calcular_proporciones_por_turno(df) -> dict:
     return proporciones
 
 
-def guardar_configuracion(proporciones: dict):
+def guardar_configuracion(proporciones: dict, escenario: str):
     config = {"proporciones_por_turno": proporciones}
-    path = DIST_DIR / "triage_config.json"
+    path = DIST_DIR / f"triage_config_{escenario}.json"
 
     with open(path, "w") as f:
         json.dump(config, f, indent=4)
@@ -233,7 +234,7 @@ def main():
     proporciones = calcular_proporciones_por_turno(df)
 
     # 4. Guardar configuración
-    guardar_configuracion(proporciones)
+    guardar_configuracion(proporciones,ESCENARIO_DEFAULT)
 
     # 5. Crear generador y mostrar ejemplos
     generador = GeneradorTriage(proporciones)
