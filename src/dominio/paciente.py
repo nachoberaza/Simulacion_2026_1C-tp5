@@ -12,7 +12,8 @@ class Paciente:
 
     tiempo_inicio_atencion: float = None
     tiempo_salida: float = None
-
+    tiempo_inicio_espera: float = None
+    
     @property
     def tipo_paciente(self):
 
