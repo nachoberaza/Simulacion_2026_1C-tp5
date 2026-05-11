@@ -3,16 +3,16 @@ import os
 from simulaciones.simulacion import SimulacionHospital
 from dominio.enums import Turno
 
-TIEMPO_FIN = 14040  # 8 horas por turno, en minutos
+TIEMPO_FIN = 480  # 8 horas por turno, en minutos
 OUTPUT_PATH = "./resultados.csv"
 
 escenarios = [
     {"turno": Turno.MANIANA, "npe": 2, "npc": 1},
-    {"turno": Turno.MANIANA, "npe": 3, "npc": 1},
+    {"turno": Turno.MANIANA, "npe": 1, "npc": 1},
     {"turno": Turno.TARDE,   "npe": 2, "npc": 1},
-    {"turno": Turno.TARDE,   "npe": 3, "npc": 1},
+    {"turno": Turno.TARDE,   "npe": 1, "npc": 1},
+    {"turno": Turno.NOCHE,   "npe": 1, "npc": 1},
     {"turno": Turno.NOCHE,   "npe": 2, "npc": 1},
-    {"turno": Turno.NOCHE,   "npe": 3, "npc": 1},
 ]
 
 if __name__ == "__main__":

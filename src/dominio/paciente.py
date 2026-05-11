@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-
-from dominio.enums import NivelUrgencia, TipoPaciente
-
+from dominio.enums import NivelUrgencia
 
 @dataclass
 class Paciente:
@@ -13,11 +11,3 @@ class Paciente:
     tiempo_inicio_atencion: float = None
     tiempo_salida: float = None
     tiempo_inicio_espera: float = None
-    
-    @property
-    def tipo_paciente(self):
-
-        if self.nivel_urgencia == NivelUrgencia.NIVEL_4:
-            return TipoPaciente.CLINICO
-
-        return TipoPaciente.ESPECIALISTA

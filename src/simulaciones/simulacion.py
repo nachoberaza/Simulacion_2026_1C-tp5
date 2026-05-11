@@ -35,6 +35,7 @@ from collections import deque
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from dominio import paciente
 from dominio.enums import NivelUrgencia, Turno
 from dominio.paciente import Paciente
 from generadores.generador_var_aleatoria import GeneradorVariablesAleatorias
@@ -59,7 +60,7 @@ class SimulacionHospital:
         self.TPSc: list[float] = [HV] * npc   # clínicos
 
         # -- Primera llegada --
-        self.TPLL: float = self.T + self.gen.generar_intervalo_arribo()
+        self.TPLL: float = self.T + self.gen.generar_intervalo_arribo(self.turno_actual)
 
         # -- Colas --
         self.cola_especialistas: deque[Paciente] = deque()
@@ -177,7 +178,7 @@ class SimulacionHospital:
         self.T = self.TPLL
 
         # Generar próxima llegada
-        self.TPLL = self.T + self.gen.generar_intervalo_arribo()
+        self.TPLL = self.T + self.gen.generar_intervalo_arribo(self.turno_actual)
 
         # Generar paciente
         paciente = self._nuevo_paciente()
@@ -194,38 +195,30 @@ class SimulacionHospital:
     # Rama ESPECIALISTA
     # ------------------------------------------------------------------
 
-    def _llegada_especialista(self, paciente: Paciente):
-
+    def _llegada_especialista(self, paciente):
         nu = paciente.nivel_urgencia
-        self.STLLe += self.T
-
         i = self._medico_libre_especialista()
 
         if nu == NivelUrgencia.NIVEL_1:
-            # Urgencia → especialista libre o derivación
             if i >= 0:
+                self.STLLe += self.T        # ← solo si es atendido
                 ta = self.gen.generar_tiempo_atencion()
                 self.NSE         += 1
                 self.NEncoladosE += 1
                 self.TPSe[i]      = self.T + ta
             else:
-                # NSE >= Pe → Derivar
                 self.PD += 1
-
         else:
-            # Niveles 2, 3, 4
             if i >= 0:
-                # Especialista libre → atender
+                self.STLLe += self.T        # ← solo si es atendido
                 ta = self.gen.generar_tiempo_atencion()
                 self.NSE         += 1
                 self.NEncoladosE += 1
                 self.TPSe[i]      = self.T + ta
             else:
-                # Sin libre → abandono o encolar
                 if self._debe_abandonar(self.NSE):
                     self.NAb += 1
                     return
-
                 paciente.tiempo_inicio_espera = self.T
                 self._insertar_con_prioridad(self.cola_especialistas, paciente)
                 self.NSE         += 1
@@ -238,31 +231,25 @@ class SimulacionHospital:
     def _llegada_clinico(self, paciente: Paciente):
 
         nu = paciente.nivel_urgencia
-        self.STLLc += self.T
-
         j = self._medico_libre_clinico()
 
         if nu == NivelUrgencia.NIVEL_1:
-            # Urgencia → clínico libre o derivación
             if j >= 0:
+                self.STLLc += self.T      # solo si es atendido directo
                 ta = self.gen.generar_tiempo_atencion()
-                self.NSC         += 1
+                self.NSC += 1
                 self.NEncoladosC += 1
-                self.TPSc[j]      = self.T + ta
+                self.TPSc[j] = self.T + ta
             else:
-                # NSC >= Pc → Derivar
                 self.PD += 1
-
         else:
-            # Niveles 2, 3, 4
             if j >= 0:
-                # Clínico libre → atender
-                ta = self.gen.generar_tiempo_atencion()
+                self.STLLc       += self.T      # solo si es atendido directo
+                ta                = self.gen.generar_tiempo_atencion()
                 self.NSC         += 1
                 self.NEncoladosC += 1
                 self.TPSc[j]      = self.T + ta
             else:
-                # Sin libre → abandono o encolar
                 if self._debe_abandonar(self.NSC):
                     self.NAb += 1
                     return
@@ -277,43 +264,39 @@ class SimulacionHospital:
     # =========================================================================
 
     def _procesar_salida_clinico(self, j: int):
-        # T = TPSc(j)
         self.T     = self.TPSc[j]
         self.STSc += self.T
         self.NSC  -= 1
         self.NTc  += 1
 
         if self.NSC >= self._Pc():
-            # Hay paciente en cola → atender al siguiente
-            paciente      = self.cola_clinicos.popleft()
-            Ec            = self.T - paciente.tiempo_inicio_espera
-            self.SEc     += Ec
-            ta            = self.gen.generar_tiempo_atencion()
-            self.TPSc[j]  = self.T + ta
+            paciente = self.cola_clinicos.popleft()
+            Ec = self.T - paciente.tiempo_inicio_espera
+            self.SEc += Ec
+            self.STLLc += paciente.tiempo_llegada   # ← llegada real del encolado
+            ta = self.gen.generar_tiempo_atencion()
+            self.TPSc[j] = self.T + ta
         else:
-            # Clínico queda libre
             self.TPSc[j] = HV
 
     # =========================================================================
     # EVENTO: SALIDA ESPECIALISTA
     # =========================================================================
 
-    def _procesar_salida_especialista(self, i: int):
-        # T = TPSe(i)
-        self.T     = self.TPSe[i]
+    def _procesar_salida_especialista(self, i):
+        self.T = self.TPSe[i]
         self.STSe += self.T
-        self.NSE  -= 1
-        self.NTe  += 1
+        self.NSE -= 1
+        self.NTe += 1
 
         if self.NSE >= self._Pe():
-            # Hay paciente en cola → atender al siguiente
-            paciente      = self.cola_especialistas.popleft()
-            Ee            = self.T - paciente.tiempo_inicio_espera
-            self.SEe     += Ee
-            ta            = self.gen.generar_tiempo_atencion()
-            self.TPSe[i]  = self.T + ta
+            paciente = self.cola_especialistas.popleft()
+            Ee = self.T - paciente.tiempo_inicio_espera
+            self.SEe += Ee
+            self.STLLe += paciente.tiempo_llegada   # ← tiempo de llegada real
+            ta = self.gen.generar_tiempo_atencion()
+            self.TPSe[i] = self.T + ta
         else:
-            # Especialista queda libre
             self.TPSe[i] = HV
 
     # =========================================================================
@@ -331,13 +314,24 @@ class SimulacionHospital:
                SÍ  → NSE==0 y NSC==0? → fin / volver a A
                NO  → volver a A
         """
+        
+        iteracion = 0
         while True:
+        
+            iteracion += 1
 
+            # Cada 1000 iteraciones imprime el estado
+            if iteracion % 100000 == 0:
+                print(f"  [iter {iteracion}] T={self.T:.1f} | TPLL={self.TPLL:.1f} | NSE={self.NSE} | NSC={self.NSC} | NTe={self.NTe} | NTc={self.NTc}")
+        
             # Calcular menores TPS (pasos iniciales del diagrama)
             min_TPSe = self._min_TPSe()
             min_TPSc = self._min_TPSc()
             min_TPS  = min(min_TPSe, min_TPSc)
 
+            # ── CORTE: no hay nada que procesar ──────────────────────────
+            if self.TPLL == HV and min_TPS == HV:
+                break
             # ── LLEGADA o SALIDA ──────────────────────────────────────────
             if self.TPLL <= min_TPS:
                 # SÍ, llegada
