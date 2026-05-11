@@ -1,88 +1,57 @@
-"""
-Simulación de Evento a Evento — Sala de Emergencias Médicas
-TP5 — Simulación 2026 1C
-
-Implementación basada en el diagrama de flujo provisto.
-
-Variables del diagrama:
-    T            → Reloj de simulación
-    TF           → Tiempo de fin de simulación
-    TPLL         → Tiempo de próxima llegada
-    TPSe[i]      → Tiempo de próxima salida del especialista i
-    TPSc[j]      → Tiempo de próxima salida del clínico j
-    Pe           → Cantidad de especialistas del turno actual
-    Pc           → Cantidad de clínicos del turno actual
-    NSE          → Pacientes actualmente en cola de especialistas
-    NSC          → Pacientes actualmente en cola de clínicos
-    NTe / NTc    → Total atendidos y salidos por cada tipo
-    STSe / STSc  → Suma de tiempos de salida
-    STLLe/STLLc  → Suma de tiempos de llegada (encolados)
-    SEe  / SEc   → Suma de tiempos de espera
-    NEncoladosE / NEncoladosC → Acumulado de encolados
-    PD           → Pacientes derivados
-    HV           → Hora Vacía (infinito)
-
-Salidas (bloque final del diagrama):
-    TPEE = SEe  / NEncoladosE
-    TPEC = SEc  / NEncoladosC
-    PPSe = (STSe - STLLe) / NTe
-    PPSc = (STSc - STLLc) / NTc
-"""
-
-import sys
 import os
+import sys
 from collections import deque
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from dominio import paciente
 from dominio.enums import NivelUrgencia, Turno
 from dominio.paciente import Paciente
 from generadores.generador_var_aleatoria import GeneradorVariablesAleatorias
 
 # ---------------------------------------------------------------------------
-HV = float("inf")   # Hora Vacía
+HV = float("inf")  # Hora Vacía
 
 
 class SimulacionHospital:
 
-    def __init__(self, tiempo_fin: float, npe: int, npc: int, turno_actual: Turno):
+    def __init__(self, tiempo_fin: float, npe: int, npc: int, turno_actual: Turno, escenario: str):
 
-        self.TF           = tiempo_fin
+        self.TF = tiempo_fin
         self.turno_actual = turno_actual
-        self.gen          = GeneradorVariablesAleatorias()
+        self.escenario = escenario
+        self.gen = GeneradorVariablesAleatorias(escenario)
 
         # -- Reloj --
         self.T = 0.0
 
         # -- Arrays TPSalida: HV = médico libre --
-        self.TPSe: list[float] = [HV] * npe   # especialistas
-        self.TPSc: list[float] = [HV] * npc   # clínicos
+        self.TPSe: list[float] = [HV] * npe  # especialistas
+        self.TPSc: list[float] = [HV] * npc  # clínicos
 
         # -- Primera llegada --
         self.TPLL: float = self.T + self.gen.generar_intervalo_arribo(self.turno_actual)
 
         # -- Colas --
         self.cola_especialistas: deque[Paciente] = deque()
-        self.cola_clinicos:      deque[Paciente] = deque()
+        self.cola_clinicos: deque[Paciente] = deque()
 
         # -- Estado --
-        self.NSE = 0   # pacientes actualmente en cola especialistas
-        self.NSC = 0   # pacientes actualmente en cola clínicos
+        self.NSE = 0  # pacientes actualmente en cola especialistas
+        self.NSC = 0  # pacientes actualmente en cola clínicos
 
         # -- Acumuladores (variables del diagrama) --
-        self.STSe        = 0.0
-        self.STSc        = 0.0
-        self.STLLe       = 0.0
-        self.STLLc       = 0.0
-        self.SEe         = 0.0
-        self.SEc         = 0.0
+        self.STSe = 0.0
+        self.STSc = 0.0
+        self.STLLe = 0.0
+        self.STLLc = 0.0
+        self.SEe = 0.0
+        self.SEc = 0.0
         self.NEncoladosE = 0
         self.NEncoladosC = 0
-        self.NTe         = 0
-        self.NTc         = 0
-        self.PD          = 0
-        self.NAb         = 0
+        self.NTe = 0
+        self.NTc = 0
+        self.PD = 0
+        self.NAb = 0
 
         self._id_paciente = 0
 
@@ -201,27 +170,27 @@ class SimulacionHospital:
 
         if nu == NivelUrgencia.NIVEL_1:
             if i >= 0:
-                self.STLLe += self.T        # ← solo si es atendido
+                self.STLLe += self.T  # ← solo si es atendido
                 ta = self.gen.generar_tiempo_atencion()
-                self.NSE         += 1
+                self.NSE += 1
                 self.NEncoladosE += 1
-                self.TPSe[i]      = self.T + ta
+                self.TPSe[i] = self.T + ta
             else:
                 self.PD += 1
         else:
             if i >= 0:
-                self.STLLe += self.T        # ← solo si es atendido
+                self.STLLe += self.T  # ← solo si es atendido
                 ta = self.gen.generar_tiempo_atencion()
-                self.NSE         += 1
+                self.NSE += 1
                 self.NEncoladosE += 1
-                self.TPSe[i]      = self.T + ta
+                self.TPSe[i] = self.T + ta
             else:
                 if self._debe_abandonar(self.NSE):
                     self.NAb += 1
                     return
                 paciente.tiempo_inicio_espera = self.T
                 self._insertar_con_prioridad(self.cola_especialistas, paciente)
-                self.NSE         += 1
+                self.NSE += 1
                 self.NEncoladosE += 1
 
     # ------------------------------------------------------------------
@@ -235,7 +204,7 @@ class SimulacionHospital:
 
         if nu == NivelUrgencia.NIVEL_1:
             if j >= 0:
-                self.STLLc += self.T      # solo si es atendido directo
+                self.STLLc += self.T  # solo si es atendido directo
                 ta = self.gen.generar_tiempo_atencion()
                 self.NSC += 1
                 self.NEncoladosC += 1
@@ -244,11 +213,11 @@ class SimulacionHospital:
                 self.PD += 1
         else:
             if j >= 0:
-                self.STLLc       += self.T      # solo si es atendido directo
-                ta                = self.gen.generar_tiempo_atencion()
-                self.NSC         += 1
+                self.STLLc += self.T  # solo si es atendido directo
+                ta = self.gen.generar_tiempo_atencion()
+                self.NSC += 1
                 self.NEncoladosC += 1
-                self.TPSc[j]      = self.T + ta
+                self.TPSc[j] = self.T + ta
             else:
                 if self._debe_abandonar(self.NSC):
                     self.NAb += 1
@@ -256,7 +225,7 @@ class SimulacionHospital:
 
                 paciente.tiempo_inicio_espera = self.T
                 self._insertar_con_prioridad(self.cola_clinicos, paciente)
-                self.NSC         += 1
+                self.NSC += 1
                 self.NEncoladosC += 1
 
     # =========================================================================
@@ -264,16 +233,16 @@ class SimulacionHospital:
     # =========================================================================
 
     def _procesar_salida_clinico(self, j: int):
-        self.T     = self.TPSc[j]
+        self.T = self.TPSc[j]
         self.STSc += self.T
-        self.NSC  -= 1
-        self.NTc  += 1
+        self.NSC -= 1
+        self.NTc += 1
 
         if self.NSC >= self._Pc():
             paciente = self.cola_clinicos.popleft()
             Ec = self.T - paciente.tiempo_inicio_espera
             self.SEc += Ec
-            self.STLLc += paciente.tiempo_llegada   # ← llegada real del encolado
+            self.STLLc += paciente.tiempo_llegada  # ← llegada real del encolado
             ta = self.gen.generar_tiempo_atencion()
             self.TPSc[j] = self.T + ta
         else:
@@ -293,7 +262,7 @@ class SimulacionHospital:
             paciente = self.cola_especialistas.popleft()
             Ee = self.T - paciente.tiempo_inicio_espera
             self.SEe += Ee
-            self.STLLe += paciente.tiempo_llegada   # ← tiempo de llegada real
+            self.STLLe += paciente.tiempo_llegada  # ← tiempo de llegada real
             ta = self.gen.generar_tiempo_atencion()
             self.TPSe[i] = self.T + ta
         else:
@@ -314,20 +283,21 @@ class SimulacionHospital:
                SÍ  → NSE==0 y NSC==0? → fin / volver a A
                NO  → volver a A
         """
-        
+
         iteracion = 0
         while True:
-        
+
             iteracion += 1
 
             # Cada 1000 iteraciones imprime el estado
             if iteracion % 100000 == 0:
-                print(f"  [iter {iteracion}] T={self.T:.1f} | TPLL={self.TPLL:.1f} | NSE={self.NSE} | NSC={self.NSC} | NTe={self.NTe} | NTc={self.NTc}")
-        
+                print(
+                    f"  [iter {iteracion}] T={self.T:.1f} | TPLL={self.TPLL:.1f} | NSE={self.NSE} | NSC={self.NSC} | NTe={self.NTe} | NTc={self.NTc}")
+
             # Calcular menores TPS (pasos iniciales del diagrama)
             min_TPSe = self._min_TPSe()
             min_TPSc = self._min_TPSc()
-            min_TPS  = min(min_TPSe, min_TPSc)
+            min_TPS = min(min_TPSe, min_TPSc)
 
             # ── CORTE: no hay nada que procesar ──────────────────────────
             if self.TPLL == HV and min_TPS == HV:
@@ -338,12 +308,12 @@ class SimulacionHospital:
                 if self.TPLL <= self.TF:
                     self._procesar_llegada()
                 else:
-                    self.TPLL = HV   # no llegan más pacientes tras TF
+                    self.TPLL = HV  # no llegan más pacientes tras TF
 
             else:
                 # NO, salida
                 if min_TPS == HV:
-                    break   # no hay más eventos
+                    break  # no hay más eventos
 
                 # TPSc(i) <= TPSe(i) → salida clínico; si no → salida especialista
                 if min_TPSc <= min_TPSe:
@@ -354,7 +324,7 @@ class SimulacionHospital:
             # ── Condición de fin del diagrama ─────────────────────────────
             if self.T > self.TF:
                 if self.NSE == 0 and self.NSC == 0:
-                    break          # colas vacías → terminar
+                    break  # colas vacías → terminar
                 else:
                     self.TPLL = HV  # seguir vaciando colas
 
@@ -369,26 +339,27 @@ class SimulacionHospital:
         PPSe = (STSe - STLLe) / NTe
         PPSc = (STSc - STLLc) / NTc
         """
-        TPEE = self.SEe  / self.NEncoladosE if self.NEncoladosE > 0 else 0.0
-        TPEC = self.SEc  / self.NEncoladosC if self.NEncoladosC > 0 else 0.0
+        TPEE = self.SEe / self.NEncoladosE if self.NEncoladosE > 0 else 0.0
+        TPEC = self.SEc / self.NEncoladosC if self.NEncoladosC > 0 else 0.0
         PPSe = (self.STSe - self.STLLe) / self.NTe if self.NTe > 0 else 0.0
         PPSc = (self.STSc - self.STLLc) / self.NTc if self.NTc > 0 else 0.0
 
         total = self.NTe + self.NTc + self.PD + self.NAb
-        PA    = (self.NAb / total * 100) if total > 0 else 0.0
+        PA = (self.NAb / total * 100) if total > 0 else 0.0
 
         return {
-            "turno":                self.turno_actual.name,
-            "npe":                  self._Pe(),
-            "npc":                  self._Pc(),
-            "tpe_especialista":     round(TPEE, 4),
-            "tpe_clinico":          round(TPEC, 4),
-            "tpps_especialista":    round(PPSe, 4),
-            "tpps_clinico":         round(PPSc, 4),
-            "porcentaje_abandono":  round(PA, 2),
-            "pacientes_derivados":  self.PD,
+            "turno": self.turno_actual.name,
+            "escenario": self.escenario,
+            "npe": self._Pe(),
+            "npc": self._Pc(),
+            "tpe_especialista": round(TPEE, 4),
+            "tpe_clinico": round(TPEC, 4),
+            "tpps_especialista": round(PPSe, 4),
+            "tpps_clinico": round(PPSc, 4),
+            "porcentaje_abandono": round(PA, 2),
+            "pacientes_derivados": self.PD,
             "atendidos_especialista": self.NTe,
-            "atendidos_clinico":    self.NTc,
-            "abandonos":            self.NAb,
-            "total_ingresados":     total,
+            "atendidos_clinico": self.NTc,
+            "abandonos": self.NAb,
+            "total_ingresados": total,
         }

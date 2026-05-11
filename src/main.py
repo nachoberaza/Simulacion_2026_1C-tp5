@@ -1,18 +1,16 @@
 import csv
 import os
-from simulaciones.simulacion import SimulacionHospital
+
 from dominio.enums import Turno
+from simulaciones.simulacion import SimulacionHospital
 
 TIEMPO_FIN = 480  # 8 horas por turno, en minutos
 OUTPUT_PATH = "./resultados.csv"
 
 escenarios = [
-    {"turno": Turno.MANIANA, "npe": 2, "npc": 1},
-    {"turno": Turno.MANIANA, "npe": 1, "npc": 1},
-    {"turno": Turno.TARDE,   "npe": 2, "npc": 1},
-    {"turno": Turno.TARDE,   "npe": 1, "npc": 1},
-    {"turno": Turno.NOCHE,   "npe": 1, "npc": 1},
-    {"turno": Turno.NOCHE,   "npe": 2, "npc": 1},
+    {"turno": Turno.NOCHE, "npe": 1, "npc": 1, "tipo": "saturado"},
+    {"turno": Turno.NOCHE, "npe": 1, "npc": 2, "tipo": "optimo"},
+    {"turno": Turno.NOCHE, "npe": 2, "npc": 3, "tipo": "ocioso"},
 ]
 
 if __name__ == "__main__":
@@ -24,7 +22,8 @@ if __name__ == "__main__":
             tiempo_fin=TIEMPO_FIN,
             npe=escenario["npe"],
             npc=escenario["npc"],
-            turno_actual=escenario["turno"]
+            turno_actual=escenario["turno"],
+            escenario=escenario["tipo"],
         )
         simulacion.correr()
         resultado = simulacion.obtener_resultados()

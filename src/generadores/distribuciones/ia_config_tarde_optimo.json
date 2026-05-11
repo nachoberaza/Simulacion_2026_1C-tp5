@@ -1,0 +1,7 @@
+{
+    "nombre_dist": "expon",
+    "params": {
+        "loc": 0,
+        "scale": 10
+    }
+}

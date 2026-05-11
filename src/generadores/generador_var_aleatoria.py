@@ -19,14 +19,14 @@ TURNO_A_CLAVE = {
 
 class GeneradorVariablesAleatorias:
 
-    def __init__(self):
+    def __init__(self, escenario: str):
         # Un generador de IA por turno
         self._gen_ia = {
-            Turno.MANIANA: cargar_ia("maniana"),
-            Turno.TARDE:   cargar_ia("tarde"),
-            Turno.NOCHE:   cargar_ia("noche"),
+            Turno.MANIANA: cargar_ia("maniana", escenario),
+            Turno.TARDE:   cargar_ia("tarde", escenario),
+            Turno.NOCHE:   cargar_ia("noche", escenario),
         }
-        self._gen_triage = cargar_triage()
+        self._gen_triage = cargar_triage(escenario)
         self._gen_tiempo = cargar_tiempo()
 
     # ------------------------------------------------------------------

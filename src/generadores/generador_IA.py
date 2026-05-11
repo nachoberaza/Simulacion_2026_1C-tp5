@@ -1,9 +1,3 @@
-"""
-Generador IA por turno.
-Genera ia_config_maniana.json, ia_config_tarde.json, ia_config_noche.json
-usando Hospital_ER_Data2.csv
-"""
-
 from pathlib import Path
 from fitter import Fitter
 from scipy import stats
@@ -97,8 +91,8 @@ def ajustar_distribucion(ia: pd.Series, turno: str):
     return nombre, params
 
 
-def guardar_config(turno: str, nombre: str, params: dict):
-    path = DIST_DIR / f"ia_config_{turno}.json"
+def guardar_config(turno: str, escenario: str, nombre: str, params: dict):
+    path = DIST_DIR / f"ia_config_{turno}_{escenario}.json"
     config = {"nombre_dist": nombre, "params": params}
     with open(path, "w") as f:
         json.dump(config, f, indent=4)
@@ -109,17 +103,9 @@ def guardar_config(turno: str, nombre: str, params: dict):
 # CARGA DE GENERADORES
 # =============================================================================
 
-def cargar_generador_desde_json(turno: str) -> GeneradorIA:
-    """
-    Carga el generador para el turno dado.
-    turno: "maniana", "tarde" o "noche"
-    """
-    path = DIST_DIR / f"ia_config_{turno}.json"
-
-    # Fallback al config genérico si no existe el del turno
-    if not path.exists():
-        path = DIST_DIR / "ia_config.json"
-        print(f"[AVISO] No existe ia_config_{turno}.json, usando ia_config.json")
+def cargar_generador_desde_json(turno: str, escenario: str) -> GeneradorIA:
+    file = f"ia_config_{turno}_{escenario}.json"
+    path = DIST_DIR / file
 
     with open(path, "r") as f:
         data = json.load(f)

@@ -34,7 +34,7 @@ PATH_CSV_MAIN   = "../../CSV/Hospital_ER_Data2.csv"
 DATE_COL        = "Patient Admission Date"
 ACUITY_COL      = "acuity"
 
-CONFIG_PATH = Path(__file__).parent / "distribuciones" / "triage_config.json"
+DIST_DIR = Path(__file__).parent / "distribuciones"
 
 # Niveles en el CSV (ESI 1-5)
 NIVELES_CSV = [1, 2, 3, 4, 5]
@@ -197,12 +197,17 @@ def calcular_proporciones_por_turno(df) -> dict:
 
 def guardar_configuracion(proporciones: dict):
     config = {"proporciones_por_turno": proporciones}
-    with open(CONFIG_PATH, "w") as f:
+    path = DIST_DIR / "triage_config.json"
+
+    with open(path, "w") as f:
         json.dump(config, f, indent=4)
-    print(f"\n[OK] Configuración guardada en: {CONFIG_PATH}")
+    print(f"\n[OK] Configuración guardada en: {path}")
 
 
-def cargar_generador_desde_json(path=CONFIG_PATH) -> GeneradorTriage:
+def cargar_generador_desde_json(escenario) -> GeneradorTriage:
+    file = f"triage_config_{escenario}.json"
+    path = DIST_DIR / file
+
     with open(path, "r") as f:
         data = json.load(f)
     return GeneradorTriage(data["proporciones_por_turno"])
