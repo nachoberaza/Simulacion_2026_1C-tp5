@@ -1,363 +1,400 @@
-import heapq
+"""
+Simulación de Evento a Evento — Sala de Emergencias Médicas
+TP5 — Simulación 2026 1C
+
+Implementación basada en el diagrama de flujo provisto.
+
+Variables del diagrama:
+    T            → Reloj de simulación
+    TF           → Tiempo de fin de simulación
+    TPLL         → Tiempo de próxima llegada
+    TPSe[i]      → Tiempo de próxima salida del especialista i
+    TPSc[j]      → Tiempo de próxima salida del clínico j
+    Pe           → Cantidad de especialistas del turno actual
+    Pc           → Cantidad de clínicos del turno actual
+    NSE          → Pacientes actualmente en cola de especialistas
+    NSC          → Pacientes actualmente en cola de clínicos
+    NTe / NTc    → Total atendidos y salidos por cada tipo
+    STSe / STSc  → Suma de tiempos de salida
+    STLLe/STLLc  → Suma de tiempos de llegada (encolados)
+    SEe  / SEc   → Suma de tiempos de espera
+    NEncoladosE / NEncoladosC → Acumulado de encolados
+    PD           → Pacientes derivados
+    HV           → Hora Vacía (infinito)
+
+Salidas (bloque final del diagrama):
+    TPEE = SEe  / NEncoladosE
+    TPEC = SEc  / NEncoladosC
+    PPSe = (STSe - STLLe) / NTe
+    PPSc = (STSc - STLLc) / NTc
+"""
+
+import sys
+import os
 from collections import deque
 
-from dominio.enums import Turno, TipoEvento, TipoPaciente, NivelUrgencia
-from dominio.evento import Evento
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from dominio.enums import NivelUrgencia, Turno
 from dominio.paciente import Paciente
-from dominio.recurso_medico import RecursoMedico
 from generadores.generador_var_aleatoria import GeneradorVariablesAleatorias
+
+# ---------------------------------------------------------------------------
+HV = float("inf")   # Hora Vacía
 
 
 class SimulacionHospital:
 
-    def __init__(self, tiempo_fin, npe, npc, turno_actual):
+    def __init__(self, tiempo_fin: float, npe: int, npc: int, turno_actual: Turno):
 
-        self.tiempo_actual = 0
-        self.tiempo_fin = tiempo_fin
-
-        self.generador_va = GeneradorVariablesAleatorias()
-
-        # -------------------------------------------------
-        # TURNO ACTUAL
-        # -------------------------------------------------
-
+        self.TF           = tiempo_fin
         self.turno_actual = turno_actual
+        self.gen          = GeneradorVariablesAleatorias()
 
-        # -------------------------------------------------
-        # RECURSOS
-        # -------------------------------------------------
+        # -- Reloj --
+        self.T = 0.0
 
-        self.especialistas = RecursoMedico(cantidad=npe)
-        self.clinicos = RecursoMedico(cantidad=npc)
+        # -- Arrays TPSalida: HV = médico libre --
+        self.TPSe: list[float] = [HV] * npe   # especialistas
+        self.TPSc: list[float] = [HV] * npc   # clínicos
 
-        # -------------------------------------------------
-        # COLAS
-        # -------------------------------------------------
+        # -- Primera llegada --
+        self.TPLL: float = self.T + self.gen.generar_intervalo_arribo()
 
-        self.cola_especialistas = deque()
-        self.cola_clinicos = deque()
+        # -- Colas --
+        self.cola_especialistas: deque[Paciente] = deque()
+        self.cola_clinicos:      deque[Paciente] = deque()
 
-        # -------------------------------------------------
-        # LISTA EVENTOS FUTUROS
-        # -------------------------------------------------
+        # -- Estado --
+        self.NSE = 0   # pacientes actualmente en cola especialistas
+        self.NSC = 0   # pacientes actualmente en cola clínicos
 
-        self.lista_eventos = []
+        # -- Acumuladores (variables del diagrama) --
+        self.STSe        = 0.0
+        self.STSc        = 0.0
+        self.STLLe       = 0.0
+        self.STLLc       = 0.0
+        self.SEe         = 0.0
+        self.SEc         = 0.0
+        self.NEncoladosE = 0
+        self.NEncoladosC = 0
+        self.NTe         = 0
+        self.NTc         = 0
+        self.PD          = 0
+        self.NAb         = 0
 
-        # -------------------------------------------------
-        # CONTADORES
-        # -------------------------------------------------
+        self._id_paciente = 0
 
-        self.id_paciente = 0
+    # =========================================================================
+    # HELPERS
+    # =========================================================================
 
-        self.pacientes_derivados = 0
-        self.pacientes_abandonan = 0
+    def _Pe(self) -> int:
+        return len(self.TPSe)
 
-        self.tiempo_espera_especialista = 0
-        self.tiempo_espera_clinico = 0
+    def _Pc(self) -> int:
+        return len(self.TPSc)
 
-        self.pacientes_atendidos_especialista = 0
-        self.pacientes_atendidos_clinico = 0
+    def _min_TPSe(self) -> float:
+        return min(self.TPSe) if self.TPSe else HV
 
-        self.tiempo_permanencia_especialista = 0
-        self.tiempo_permanencia_clinico = 0
+    def _min_TPSc(self) -> float:
+        return min(self.TPSc) if self.TPSc else HV
 
-    # =====================================================
-    # INICIALIZACION
-    # =====================================================
+    def _idx_min_TPSe(self) -> int:
+        return self.TPSe.index(self._min_TPSe())
 
-    def inicializar(self):
+    def _idx_min_TPSc(self) -> int:
+        return self.TPSc.index(self._min_TPSc())
 
-        self.programar_proxima_llegada()
+    def _medico_libre_especialista(self) -> int:
+        """Retorna índice del primer especialista libre (TPSe == HV), o -1."""
+        for i, t in enumerate(self.TPSe):
+            if t == HV:
+                return i
+        return -1
 
-    # =====================================================
-    # EVENTOS
-    # =====================================================
+    def _medico_libre_clinico(self) -> int:
+        """Retorna índice del primer clínico libre (TPSc == HV), o -1."""
+        for j, t in enumerate(self.TPSc):
+            if t == HV:
+                return j
+        return -1
 
-    def programar_evento(self, evento):
-
-        heapq.heappush(self.lista_eventos, evento)
-
-    def obtener_proximo_evento(self):
-
-        return heapq.heappop(self.lista_eventos)
-
-    # =====================================================
-    # LLEGADAS
-    # =====================================================
-
-    def programar_proxima_llegada(self):
-
-        intervalo = self.generador_va.generar_intervalo_arribo()
-
-        tiempo_llegada = self.tiempo_actual + intervalo
-
-        paciente = Paciente(
-            id_paciente=self.id_paciente,
-            tiempo_llegada=tiempo_llegada,
-            nivel_urgencia=self.generador_va.generar_nivel_urgencia(self.turno_actual)
+    def _nuevo_paciente(self) -> Paciente:
+        self._id_paciente += 1
+        nivel = self.gen.generar_nivel_urgencia(self.turno_actual)
+        p = Paciente(
+            id_paciente=self._id_paciente,
+            tiempo_llegada=self.T,
+            nivel_urgencia=nivel,
         )
-
-        self.id_paciente += 1
-
-        evento = Evento(
-            tiempo=tiempo_llegada,
-            tipo=TipoEvento.LLEGADA,
-            paciente=paciente
-        )
-
-        self.programar_evento(evento)
-
-    def procesar_llegada(self, evento):
-
-        paciente = evento.paciente
-
-        self.programar_proxima_llegada()
-
-        if paciente.tipo_paciente == TipoPaciente.ESPECIALISTA:
-            self.procesar_llegada_especialista(paciente)
-
-        else:
-            self.procesar_llegada_clinico(paciente)
-
-    # =====================================================
-    # ESPECIALISTAS
-    # =====================================================
-
-    def procesar_llegada_especialista(self, paciente):
-
-        if self.especialistas.hay_disponible():
-
-            self.iniciar_atencion_especialista(paciente)
-
-        else:
-
-            # NIVEL 1 NO ESPERA
-            if paciente.nivel_urgencia == NivelUrgencia.NIVEL_1:
-
-                self.pacientes_derivados += 1
-                return
-
-            # ABANDONO
-            if self.debe_abandonar(len(self.cola_especialistas)):
-
-                self.pacientes_abandonan += 1
-                return
-
-            # PRIORIDAD
-            if paciente.nivel_urgencia == NivelUrgencia.NIVEL_2:
-
-                self.insertar_prioridad_especialista(paciente)
-
-            else:
-
-                self.cola_especialistas.append(paciente)
-
-    def iniciar_atencion_especialista(self, paciente):
-
-        self.especialistas.ocupar()
-
-        paciente.tiempo_inicio_atencion = self.tiempo_actual
-
-        espera = (
-            paciente.tiempo_inicio_atencion -
-            paciente.tiempo_llegada
-        )
-
-        self.tiempo_espera_especialista += espera
-
-        tiempo_atencion = (
-            self.generador_va
-            .generar_tiempo_atencion()
-        )
-
-        evento_salida = Evento(
-            tiempo=self.tiempo_actual + tiempo_atencion,
-            tipo=TipoEvento.SALIDA_ESPECIALISTA,
-            paciente=paciente
-        )
-
-        self.programar_evento(evento_salida)
-
-    def insertar_prioridad_especialista(self, paciente):
-
-        posicion = 0
-
-        for p in self.cola_especialistas:
-
-            if p.nivel_urgencia != NivelUrgencia.NIVEL_2:
-                break
-
-            posicion += 1
-
-        self.cola_especialistas.insert(posicion, paciente)
-
-    # =====================================================
-    # CLINICOS
-    # =====================================================
-
-    def procesar_llegada_clinico(self, paciente):
-
-        if self.clinicos.hay_disponible():
-
-            self.iniciar_atencion_clinico(paciente)
-
-        else:
-
-            if self.debe_abandonar(len(self.cola_clinicos)):
-
-                self.pacientes_abandonan += 1
-                return
-
-            self.cola_clinicos.append(paciente)
-
-    def iniciar_atencion_clinico(self, paciente):
-
-        self.clinicos.ocupar()
-
-        paciente.tiempo_inicio_atencion = self.tiempo_actual
-
-        espera = (
-            paciente.tiempo_inicio_atencion -
-            paciente.tiempo_llegada
-        )
-
-        self.tiempo_espera_clinico += espera
-
-        tiempo_atencion = (
-            self.generador_va
-            .generar_tiempo_atencion()
-        )
-
-        evento_salida = Evento(
-            tiempo=self.tiempo_actual + tiempo_atencion,
-            tipo=TipoEvento.SALIDA_CLINICO,
-            paciente=paciente
-        )
-
-        self.programar_evento(evento_salida)
-
-    # =====================================================
-    # SALIDAS
-    # =====================================================
-
-    def procesar_salida_especialista(self, evento):
-
-        self.pacientes_atendidos_especialista += 1
-        evento.paciente.tiempo_salida = self.tiempo_actual
-        self.tiempo_permanencia_especialista += (
-                evento.paciente.tiempo_salida - evento.paciente.tiempo_llegada
-        )
-
-        if len(self.cola_especialistas) > 0:
-
-            paciente = self.cola_especialistas.popleft()
-
-            self.iniciar_atencion_especialista(paciente)
-
-        else:
-
-            self.especialistas.liberar()
-
-    def procesar_salida_clinico(self, evento):
-
-        self.pacientes_atendidos_clinico += 1
-        evento.paciente.tiempo_salida = self.tiempo_actual
-        self.tiempo_permanencia_clinico += (
-                evento.paciente.tiempo_salida - evento.paciente.tiempo_llegada
-        )
-
-        if len(self.cola_clinicos) > 0:
-
-            paciente = self.cola_clinicos.popleft()
-
-            self.iniciar_atencion_clinico(paciente)
-
-        else:
-
-            self.clinicos.liberar()
-
-    # =====================================================
-    # ABANDONO
-    # =====================================================
-
-    def debe_abandonar(self, longitud_cola):
-
-        probabilidad = (
-            self.generador_va
-            .generar_probabilidad_abandono()
-        )
-
-        if longitud_cola > 10:
-            return probabilidad <= 0.45
-
+        p.tiempo_inicio_espera = self.T
+        return p
+
+    def _debe_abandonar(self, longitud_cola: int) -> bool:
+        """
+        25% abandona si cola > 5.
+        Del resto, 45% abandona si cola > 10.
+        """
         if longitud_cola > 5:
-            return probabilidad <= 0.25
-
+            if self.gen.generar_probabilidad_abandono() < 0.25:
+                return True
+            if longitud_cola > 10:
+                if self.gen.generar_probabilidad_abandono() < 0.45:
+                    return True
         return False
 
-    # =====================================================
-    # LOOP PRINCIPAL
-    # =====================================================
+    def _insertar_con_prioridad(self, cola: deque, paciente: Paciente):
+        """
+        FIFO con prioridad:
+        Urgentes (NIVEL_1, NIVEL_2) van delante de los no-urgentes,
+        pero detrás de los urgentes que ya estaban en la cola.
+        """
+        es_urgente = paciente.nivel_urgencia in (
+            NivelUrgencia.NIVEL_1,
+            NivelUrgencia.NIVEL_2,
+        )
+        if not es_urgente:
+            cola.append(paciente)
+            return
+
+        lista = list(cola)
+        pos = 0
+        for k, p in enumerate(lista):
+            if p.nivel_urgencia in (NivelUrgencia.NIVEL_1, NivelUrgencia.NIVEL_2):
+                pos = k + 1
+        lista.insert(pos, paciente)
+        cola.clear()
+        cola.extend(lista)
+
+    # =========================================================================
+    # EVENTO: LLEGADA
+    # =========================================================================
+
+    def _procesar_llegada(self):
+        # T = TPLL
+        self.T = self.TPLL
+
+        # Generar próxima llegada
+        self.TPLL = self.T + self.gen.generar_intervalo_arribo()
+
+        # Generar paciente
+        paciente = self._nuevo_paciente()
+
+        # R1 > 0.55 → Especialista | R1 <= 0.55 → Clínico
+        r1 = self.gen.generar_probabilidad_abandono()
+
+        if r1 > 0.55:
+            self._llegada_especialista(paciente)
+        else:
+            self._llegada_clinico(paciente)
+
+    # ------------------------------------------------------------------
+    # Rama ESPECIALISTA
+    # ------------------------------------------------------------------
+
+    def _llegada_especialista(self, paciente: Paciente):
+
+        nu = paciente.nivel_urgencia
+        self.STLLe += self.T
+
+        i = self._medico_libre_especialista()
+
+        if nu == NivelUrgencia.NIVEL_1:
+            # Urgencia → especialista libre o derivación
+            if i >= 0:
+                ta = self.gen.generar_tiempo_atencion()
+                self.NSE         += 1
+                self.NEncoladosE += 1
+                self.TPSe[i]      = self.T + ta
+            else:
+                # NSE >= Pe → Derivar
+                self.PD += 1
+
+        else:
+            # Niveles 2, 3, 4
+            if i >= 0:
+                # Especialista libre → atender
+                ta = self.gen.generar_tiempo_atencion()
+                self.NSE         += 1
+                self.NEncoladosE += 1
+                self.TPSe[i]      = self.T + ta
+            else:
+                # Sin libre → abandono o encolar
+                if self._debe_abandonar(self.NSE):
+                    self.NAb += 1
+                    return
+
+                paciente.tiempo_inicio_espera = self.T
+                self._insertar_con_prioridad(self.cola_especialistas, paciente)
+                self.NSE         += 1
+                self.NEncoladosE += 1
+
+    # ------------------------------------------------------------------
+    # Rama CLÍNICO
+    # ------------------------------------------------------------------
+
+    def _llegada_clinico(self, paciente: Paciente):
+
+        nu = paciente.nivel_urgencia
+        self.STLLc += self.T
+
+        j = self._medico_libre_clinico()
+
+        if nu == NivelUrgencia.NIVEL_1:
+            # Urgencia → clínico libre o derivación
+            if j >= 0:
+                ta = self.gen.generar_tiempo_atencion()
+                self.NSC         += 1
+                self.NEncoladosC += 1
+                self.TPSc[j]      = self.T + ta
+            else:
+                # NSC >= Pc → Derivar
+                self.PD += 1
+
+        else:
+            # Niveles 2, 3, 4
+            if j >= 0:
+                # Clínico libre → atender
+                ta = self.gen.generar_tiempo_atencion()
+                self.NSC         += 1
+                self.NEncoladosC += 1
+                self.TPSc[j]      = self.T + ta
+            else:
+                # Sin libre → abandono o encolar
+                if self._debe_abandonar(self.NSC):
+                    self.NAb += 1
+                    return
+
+                paciente.tiempo_inicio_espera = self.T
+                self._insertar_con_prioridad(self.cola_clinicos, paciente)
+                self.NSC         += 1
+                self.NEncoladosC += 1
+
+    # =========================================================================
+    # EVENTO: SALIDA CLÍNICO
+    # =========================================================================
+
+    def _procesar_salida_clinico(self, j: int):
+        # T = TPSc(j)
+        self.T     = self.TPSc[j]
+        self.STSc += self.T
+        self.NSC  -= 1
+        self.NTc  += 1
+
+        if self.NSC >= self._Pc():
+            # Hay paciente en cola → atender al siguiente
+            paciente      = self.cola_clinicos.popleft()
+            Ec            = self.T - paciente.tiempo_inicio_espera
+            self.SEc     += Ec
+            ta            = self.gen.generar_tiempo_atencion()
+            self.TPSc[j]  = self.T + ta
+        else:
+            # Clínico queda libre
+            self.TPSc[j] = HV
+
+    # =========================================================================
+    # EVENTO: SALIDA ESPECIALISTA
+    # =========================================================================
+
+    def _procesar_salida_especialista(self, i: int):
+        # T = TPSe(i)
+        self.T     = self.TPSe[i]
+        self.STSe += self.T
+        self.NSE  -= 1
+        self.NTe  += 1
+
+        if self.NSE >= self._Pe():
+            # Hay paciente en cola → atender al siguiente
+            paciente      = self.cola_especialistas.popleft()
+            Ee            = self.T - paciente.tiempo_inicio_espera
+            self.SEe     += Ee
+            ta            = self.gen.generar_tiempo_atencion()
+            self.TPSe[i]  = self.T + ta
+        else:
+            # Especialista queda libre
+            self.TPSe[i] = HV
+
+    # =========================================================================
+    # LOOP PRINCIPAL — sigue el diagrama exactamente
+    # =========================================================================
 
     def correr(self):
+        """
+        CI → A
+        A  → menor TPSe(i), menor TPSc(j)
+           → TPLL <= min(TPSe, TPSc)?
+               SÍ  → llegada
+               NO  → salida clínico o especialista
+           → T <= TF?
+               SÍ  → NSE==0 y NSC==0? → fin / volver a A
+               NO  → volver a A
+        """
+        while True:
 
-        self.inicializar()
+            # Calcular menores TPS (pasos iniciales del diagrama)
+            min_TPSe = self._min_TPSe()
+            min_TPSc = self._min_TPSc()
+            min_TPS  = min(min_TPSe, min_TPSc)
 
-        while (
-            self.lista_eventos and
-            self.tiempo_actual < self.tiempo_fin
-        ):
+            # ── LLEGADA o SALIDA ──────────────────────────────────────────
+            if self.TPLL <= min_TPS:
+                # SÍ, llegada
+                if self.TPLL <= self.TF:
+                    self._procesar_llegada()
+                else:
+                    self.TPLL = HV   # no llegan más pacientes tras TF
 
-            evento = self.obtener_proximo_evento()
+            else:
+                # NO, salida
+                if min_TPS == HV:
+                    break   # no hay más eventos
 
-            self.tiempo_actual = evento.tiempo
+                # TPSc(i) <= TPSe(i) → salida clínico; si no → salida especialista
+                if min_TPSc <= min_TPSe:
+                    self._procesar_salida_clinico(self._idx_min_TPSc())
+                else:
+                    self._procesar_salida_especialista(self._idx_min_TPSe())
 
-            if evento.tipo == TipoEvento.LLEGADA:
+            # ── Condición de fin del diagrama ─────────────────────────────
+            if self.T > self.TF:
+                if self.NSE == 0 and self.NSC == 0:
+                    break          # colas vacías → terminar
+                else:
+                    self.TPLL = HV  # seguir vaciando colas
 
-                self.procesar_llegada(evento)
+    # =========================================================================
+    # RESULTADOS — bloque final del diagrama
+    # =========================================================================
 
-            elif evento.tipo == TipoEvento.SALIDA_ESPECIALISTA:
+    def obtener_resultados(self) -> dict:
+        """
+        TPEC = SEc  / NEncoladosC
+        TPEE = SEe  / NEncoladosE
+        PPSe = (STSe - STLLe) / NTe
+        PPSc = (STSc - STLLc) / NTc
+        """
+        TPEE = self.SEe  / self.NEncoladosE if self.NEncoladosE > 0 else 0.0
+        TPEC = self.SEc  / self.NEncoladosC if self.NEncoladosC > 0 else 0.0
+        PPSe = (self.STSe - self.STLLe) / self.NTe if self.NTe > 0 else 0.0
+        PPSc = (self.STSc - self.STLLc) / self.NTc if self.NTc > 0 else 0.0
 
-                self.procesar_salida_especialista(evento)
-
-            elif evento.tipo == TipoEvento.SALIDA_CLINICO:
-
-                self.procesar_salida_clinico(evento)
-
-        self.obtener_resultados()
-
-    # =====================================================
-    # RESULTADOS
-    # =====================================================
-
-    def obtener_resultados(self):
-        promedio_espera_esp = (
-            self.tiempo_espera_especialista / self.pacientes_atendidos_especialista
-            if self.pacientes_atendidos_especialista > 0 else 0
-        )
-        promedio_espera_cli = (
-            self.tiempo_espera_clinico / self.pacientes_atendidos_clinico
-            if self.pacientes_atendidos_clinico > 0 else 0
-        )
-        promedio_perm_esp = (
-            self.tiempo_permanencia_especialista / self.pacientes_atendidos_especialista
-            if self.pacientes_atendidos_especialista > 0 else 0
-        )
-        promedio_perm_cli = (
-            self.tiempo_permanencia_clinico / self.pacientes_atendidos_clinico
-            if self.pacientes_atendidos_clinico > 0 else 0
-        )
+        total = self.NTe + self.NTc + self.PD + self.NAb
+        PA    = (self.NAb / total * 100) if total > 0 else 0.0
 
         return {
-            "turno": self.turno_actual.name,
-            "npe": self.especialistas.cantidad_total,
-            "npc": self.clinicos.cantidad_total,
-            "tpe_especialista": round(promedio_espera_esp, 2),
-            "tpe_clinico": round(promedio_espera_cli, 2),
-            "tpps_especialista": round(promedio_perm_esp, 2),
-            "tpps_clinico": round(promedio_perm_cli, 2),
-            "pacientes_derivados": self.pacientes_derivados,
-            "pacientes_abandonan": self.pacientes_abandonan,
-            "atendidos_especialista": self.pacientes_atendidos_especialista,
-            "atendidos_clinico": self.pacientes_atendidos_clinico,
+            "turno":                self.turno_actual.name,
+            "npe":                  self._Pe(),
+            "npc":                  self._Pc(),
+            "tpe_especialista":     round(TPEE, 4),
+            "tpe_clinico":          round(TPEC, 4),
+            "tpps_especialista":    round(PPSe, 4),
+            "tpps_clinico":         round(PPSc, 4),
+            "porcentaje_abandono":  round(PA, 2),
+            "pacientes_derivados":  self.PD,
+            "atendidos_especialista": self.NTe,
+            "atendidos_clinico":    self.NTc,
+            "abandonos":            self.NAb,
+            "total_ingresados":     total,
         }
