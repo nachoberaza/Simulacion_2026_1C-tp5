@@ -8,13 +8,13 @@ TIEMPO_FIN = 480  # 8 horas por turno, en minutos
 OUTPUT_PATH = "./resultados.csv"
 
 escenarios = [
-    {"turno": Turno.MANIANA, "npe": 1, "npc": 1, "tipo": "optimo"},
-    {"turno": Turno.TARDE, "npe": 1, "npc": 1, "tipo": "optimo"},
-    {"turno": Turno.NOCHE, "npe": 1, "npc": 1, "tipo": "optimo"},
+    #{"turno": Turno.MANIANA, "npe": 1, "npc": 1, "tipo": "optimo"},
+    #{"turno": Turno.TARDE, "npe": 1, "npc": 1, "tipo": "optimo"},
+    #{"turno": Turno.NOCHE, "npe": 1, "npc": 1, "tipo": "optimo"},
 
-    {"turno": Turno.MANIANA, "npe": 2, "npc": 4, "tipo": "optimo"},
-    {"turno": Turno.TARDE, "npe": 2, "npc": 4, "tipo": "optimo"},
-    {"turno": Turno.NOCHE, "npe": 4, "npc": 4, "tipo": "optimo"},
+    #{"turno": Turno.MANIANA, "npe": 2, "npc": 4, "tipo": "optimo"},
+    {"turno": Turno.TARDE, "npe": 2, "npc": 2, "tipo": "optimo"},
+    #{"turno": Turno.NOCHE, "npe": 4, "npc": 4, "tipo": "optimo"},
 ]
 
 if __name__ == "__main__":

@@ -188,6 +188,7 @@ class SimulacionHospital:
                 if self._debe_abandonar(self.NSE):
                     self.NAb += 1
                     return
+                self.STLLe += self.T 
                 paciente.tiempo_inicio_espera = self.T
                 self._insertar_con_prioridad(self.cola_especialistas, paciente)
                 self.NSE += 1
@@ -224,7 +225,7 @@ class SimulacionHospital:
                 if self._debe_abandonar(self.NSC):
                     self.NAb += 1
                     return
-
+                self.STLLc += self.T  # solo si es atendido directo
                 paciente.tiempo_inicio_espera = self.T
                 self._insertar_con_prioridad(self.cola_clinicos, paciente)
                 self.NSC += 1
@@ -243,7 +244,7 @@ class SimulacionHospital:
             paciente = self.cola_clinicos.popleft()
             Ec = self.T - paciente.tiempo_inicio_espera
             self.SEc += Ec
-            self.STLLc += paciente.tiempo_llegada  # ← llegada real del encolado
+            #self.STLLc += paciente.tiempo_llegada  # ← llegada real del encolado
             ta = self.gen.generar_tiempo_atencion()
             self.NTc += 1
             self.TPSc[j] = self.T + ta
@@ -263,7 +264,7 @@ class SimulacionHospital:
             paciente = self.cola_especialistas.popleft()
             Ee = self.T - paciente.tiempo_inicio_espera
             self.SEe += Ee
-            self.STLLe += paciente.tiempo_llegada  # ← tiempo de llegada real
+            #self.STLLe += paciente.tiempo_llegada  # ← tiempo de llegada real
             ta = self.gen.generar_tiempo_atencion()
             self.NTe += 1
             self.TPSe[i] = self.T + ta
@@ -341,6 +342,13 @@ class SimulacionHospital:
         PPSe = (STSe - STLLe) / NTe
         PPSc = (STSc - STLLc) / NTc
         """
+
+        print(f"\n--- DEBUG ACUMULADORES ---")
+        print(f"STSe={self.STSe:.2f}  STLLe={self.STLLe:.2f}  NTe={self.NTe}  NEncoladosE={self.NEncoladosE}")
+        print(f"STSc={self.STSc:.2f}  STLLc={self.STLLc:.2f}  NTc={self.NTc}  NEncoladosC={self.NEncoladosC}")
+        print(f"SEe={self.SEe:.2f}  SEc={self.SEc:.2f}")
+        print(f"--------------------------\n")
+
         TPEE = self.SEe / self.NEncoladosE if self.NEncoladosE > 0 else 0.0
         TPEC = self.SEc / self.NEncoladosC if self.NEncoladosC > 0 else 0.0
         PPSe = (self.STSe - self.STLLe) / self.NTe if self.NTe > 0 else 0.0
