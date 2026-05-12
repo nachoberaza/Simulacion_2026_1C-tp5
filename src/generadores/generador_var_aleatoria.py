@@ -9,50 +9,82 @@ from generadores.generador_IA import cargar_generador_desde_json as cargar_ia
 from generadores.generador_triage import cargar_generador_desde_json as cargar_triage
 from generadores.generador_tiempo_atencion import cargar_generador_desde_json as cargar_tiempo
 
-# Mapeo Turno del dominio → clave de archivo
-TURNO_A_CLAVE = {
-    Turno.MANIANA: "maniana",
-    Turno.TARDE:   "tarde",
-    Turno.NOCHE:   "noche",
-}
-
 
 class GeneradorVariablesAleatorias:
 
-    def __init__(self, escenario: str):
-        # Un generador de IA por turno
+    def __init__(self, escenario: str, debug=False):
+        self.debug = debug
+
+        # Un generador IA por turno
         self._gen_ia = {
             Turno.MANIANA: cargar_ia("maniana", escenario),
             Turno.TARDE:   cargar_ia("tarde", escenario),
             Turno.NOCHE:   cargar_ia("noche", escenario),
         }
+
         self._gen_triage = cargar_triage(escenario)
         self._gen_tiempo = cargar_tiempo()
 
-    # ------------------------------------------------------------------
-    # INTERVALO ENTRE ARRIBOS — depende del turno
-    # ------------------------------------------------------------------
+    # ==========================================================
+    # Helper para imprimir logs
+    # ==========================================================
+
+    def _log(self, mensaje):
+        if self.debug:
+            print(mensaje)
+
+    # ==========================================================
+    # INTERVALO ENTRE ARRIBOS
+    # ==========================================================
 
     def generar_intervalo_arribo(self, turno: Turno) -> float:
-        return self._gen_ia[turno].generar()
+        valor = self._gen_ia[turno].generar()
 
-    # ------------------------------------------------------------------
-    # NIVEL DE URGENCIA (TRIAGE)
-    # ------------------------------------------------------------------
+        # Factor de congestión
+        factor_congestion = 0.3
+
+        valor = valor * factor_congestion
+
+        print(f"[IA] turno={turno.name:<8} original={valor/factor_congestion:.2f}  ajustado={valor:.2f}")
+        
+        return valor
+
+    # ==========================================================
+    # NIVEL DE URGENCIA
+    # ==========================================================
 
     def generar_nivel_urgencia(self, turno: Turno) -> NivelUrgencia:
-        return self._gen_triage.generar(turno)
+        nivel = self._gen_triage.generar(turno)
 
-    # ------------------------------------------------------------------
+        self._log(
+            f"[TRIAGE] turno={turno.name:<8} "
+            f"nivel={nivel.name}"
+        )
+
+        return nivel
+
+    # ==========================================================
     # TIEMPO DE ATENCIÓN
-    # ------------------------------------------------------------------
+    # ==========================================================
 
     def generar_tiempo_atencion(self) -> float:
-        return self._gen_tiempo.generar()
+        valor = self._gen_tiempo.generar()
 
-    # ------------------------------------------------------------------
-    # PROBABILIDAD DE ABANDONO / R1
-    # ------------------------------------------------------------------
+        self._log(
+            f"[TA] valor={valor:.2f}"
+        )
+
+        return valor
+
+    # ==========================================================
+    # RANDOM UNIFORME (routing / abandono)
+    # ==========================================================
 
     def generar_probabilidad_abandono(self) -> float:
-        return random.random()
+        valor = random.random()
+
+        self._log(
+            f"[RAND] valor={valor:.4f}"
+        )
+
+        return valor

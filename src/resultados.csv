@@ -1,0 +1,7 @@
+turno,escenario,npe,npc,tpe_especialista,tpe_clinico,tpps_especialista,tpps_clinico,porcentaje_abandono,pacientes_derivados,atendidos_especialista,atendidos_clinico,abandonos,total_ingresados
+MANIANA,optimo,1,1,152.4935,31.3218,163.1639,50.9718,7.41,0,14,11,2,27
+TARDE,optimo,1,1,47.3337,100.4214,69.6444,117.087,0.0,0,10,14,0,24
+NOCHE,optimo,1,1,15.7619,97.9077,38.2492,108.1556,0.0,1,7,14,0,22
+MANIANA,optimo,2,4,9.9441,0.0,39.494,34.9525,0.0,0,7,18,0,25
+TARDE,optimo,2,4,12.5816,0.0,28.6441,41.8427,0.0,0,16,16,0,32
+NOCHE,optimo,4,4,0.0,0.0,43.1486,29.8052,0.0,0,6,6,0,12

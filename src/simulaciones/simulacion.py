@@ -19,7 +19,7 @@ class SimulacionHospital:
         self.TF = tiempo_fin
         self.turno_actual = turno_actual
         self.escenario = escenario
-        self.gen = GeneradorVariablesAleatorias(escenario)
+        self.gen = GeneradorVariablesAleatorias(escenario, debug=True)
 
         # -- Reloj --
         self.T = 0.0
@@ -153,7 +153,7 @@ class SimulacionHospital:
         paciente = self._nuevo_paciente()
 
         # R1 > 0.55 → Especialista | R1 <= 0.55 → Clínico
-        r1 = self.gen.generar_probabilidad_abandono()
+        r1 = self.gen.generar_probabilidad_abandono()#?????
 
         if r1 > 0.55:
             self._llegada_especialista(paciente)
@@ -169,11 +169,11 @@ class SimulacionHospital:
         i = self._medico_libre_especialista()
 
         if nu == NivelUrgencia.NIVEL_1:
-            if i >= 0:
+            if i >= 0: # hay uno libre
                 self.STLLe += self.T  # ← solo si es atendido
                 ta = self.gen.generar_tiempo_atencion()
                 self.NSE += 1
-                self.NEncoladosE += 1
+                self.NTe += 1
                 self.TPSe[i] = self.T + ta
             else:
                 self.PD += 1
@@ -182,7 +182,7 @@ class SimulacionHospital:
                 self.STLLe += self.T  # ← solo si es atendido
                 ta = self.gen.generar_tiempo_atencion()
                 self.NSE += 1
-                self.NEncoladosE += 1
+                self.NTe += 1
                 self.TPSe[i] = self.T + ta
             else:
                 if self._debe_abandonar(self.NSE):
@@ -207,7 +207,8 @@ class SimulacionHospital:
                 self.STLLc += self.T  # solo si es atendido directo
                 ta = self.gen.generar_tiempo_atencion()
                 self.NSC += 1
-                self.NEncoladosC += 1
+                self.NTc += 1
+
                 self.TPSc[j] = self.T + ta
             else:
                 self.PD += 1
@@ -216,7 +217,8 @@ class SimulacionHospital:
                 self.STLLc += self.T  # solo si es atendido directo
                 ta = self.gen.generar_tiempo_atencion()
                 self.NSC += 1
-                self.NEncoladosC += 1
+                self.NTc += 1                
+                #self.NEncoladosC += 1
                 self.TPSc[j] = self.T + ta
             else:
                 if self._debe_abandonar(self.NSC):
@@ -236,7 +238,6 @@ class SimulacionHospital:
         self.T = self.TPSc[j]
         self.STSc += self.T
         self.NSC -= 1
-        self.NTc += 1
 
         if self.NSC >= self._Pc():
             paciente = self.cola_clinicos.popleft()
@@ -244,6 +245,7 @@ class SimulacionHospital:
             self.SEc += Ec
             self.STLLc += paciente.tiempo_llegada  # ← llegada real del encolado
             ta = self.gen.generar_tiempo_atencion()
+            self.NTc += 1
             self.TPSc[j] = self.T + ta
         else:
             self.TPSc[j] = HV
@@ -256,7 +258,6 @@ class SimulacionHospital:
         self.T = self.TPSe[i]
         self.STSe += self.T
         self.NSE -= 1
-        self.NTe += 1
 
         if self.NSE >= self._Pe():
             paciente = self.cola_especialistas.popleft()
@@ -264,6 +265,7 @@ class SimulacionHospital:
             self.SEe += Ee
             self.STLLe += paciente.tiempo_llegada  # ← tiempo de llegada real
             ta = self.gen.generar_tiempo_atencion()
+            self.NTe += 1
             self.TPSe[i] = self.T + ta
         else:
             self.TPSe[i] = HV

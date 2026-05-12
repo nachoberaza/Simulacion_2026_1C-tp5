@@ -1,7 +1,8 @@
 {
-    "nombre_dist": "expon",
+    "nombre_dist": "exponnorm",
     "params": {
-        "loc": 0,
-        "scale": 10
+        "K": 1273.0391940809668,
+        "loc": 0.9176978743702664,
+        "scale": 0.03944885406245317
     }
 }

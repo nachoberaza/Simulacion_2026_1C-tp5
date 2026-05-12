@@ -41,7 +41,7 @@ from scipy import stats
 # CONFIGURACIÓN
 # =============================================================================
 
-PATH_CSV = "../CSV/Hospital_ER_Data.csv"  # ← Ajustar según entorno local
+PATH_CSV = "../CSV/Hospital_ER_Data2.csv"  # ← Ajustar según entorno local
 DATE_COL = "Patient Admission Date"
 BINS_HIST = 50
 TOP_N_DISTRIBUTIONS = 10

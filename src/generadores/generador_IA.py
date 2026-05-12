@@ -1,6 +1,7 @@
 from pathlib import Path
 from fitter import Fitter
 from scipy import stats
+import matplotlib.pyplot as plt
 import pandas as pd
 import json
 
@@ -11,7 +12,7 @@ import json
 PATH_CSV = "../../CSV/Hospital_ER_Data2.csv"
 DATE_COL = "Patient Admission Date"
 BINS_HIST = 50
-ESCENARIO_DEFAULT = "ocioso"
+ESCENARIO_DEFAULT = "optimo"
 
 DIST_DIR = Path(__file__).parent / "distribuciones"
 
@@ -54,9 +55,9 @@ def cargar_datos():
     df = df.sort_values("dt").reset_index(drop=True)
     return df
 
-
 def filtrar_por_turno(df: pd.DataFrame, turno: str) -> pd.Series:
     hora = df["dt"].dt.hour
+
     if turno == "maniana":
         mask = (hora >= 7) & (hora < 15)
     elif turno == "tarde":
@@ -65,19 +66,16 @@ def filtrar_por_turno(df: pd.DataFrame, turno: str) -> pd.Series:
         mask = (hora >= 23) | (hora < 7)
 
     df_turno = df[mask].copy().reset_index(drop=True)
-    
-    # Calcular IA solo entre pacientes del mismo día y turno
-    df_turno["fecha"] = df_turno["dt"].dt.date
-    
-    ias = []
-    for fecha, grupo in df_turno.groupby("fecha"):
-        grupo = grupo.sort_values("dt")
-        diff = grupo["dt"].diff().dt.total_seconds() / 60
-        diff = diff.dropna()
-        diff = diff[diff > 0]
-        ias.extend(diff.tolist())
-    
-    return pd.Series(ias)
+
+    # Calcular IA entre filas consecutivas
+    ia = df_turno["dt"].diff().dt.total_seconds() / 60
+
+    # Limpiar
+    ia = ia.dropna()
+    ia = ia[ia > 0]
+    ia = ia[ia < 480]
+
+    return ia
 
 
 def ajustar_distribucion(ia: pd.Series, turno: str):
@@ -107,9 +105,13 @@ def guardar_config(turno: str, escenario: str, nombre: str, params: dict):
 def cargar_generador_desde_json(turno: str, escenario: str) -> GeneradorIA:
     file = f"ia_config_{turno}_{escenario}.json"
     path = DIST_DIR / file
+    
 
     with open(path, "r") as f:
         data = json.load(f)
+
+    print(f"Cargando archivo: {path}")
+    print(data)
 
     return GeneradorIA(nombre_dist=data["nombre_dist"], params=data["params"])
 
@@ -128,11 +130,36 @@ def main():
 
     for turno in ["maniana", "tarde", "noche"]:
         ia = filtrar_por_turno(df, turno)
+
+        print(f"\n--- {turno.upper()} ---")
+        print(ia.describe())
+
+        # HISTOGRAMA
+        plt.figure(figsize=(8,4))
+        plt.hist(ia, bins=30)
+        plt.title(f"Histograma IA - {turno}")
+        plt.xlabel("Intervalo entre arribos (min)")
+        plt.ylabel("Frecuencia")
+        plt.show()
+
+        # BOXPLOT
+        plt.figure(figsize=(8,2))
+        plt.boxplot(ia, vert=False)
+        plt.title(f"Boxplot IA - {turno}")
+        plt.xlabel("Intervalo entre arribos (min)")
+        plt.show()
+
+        # DEBUG: mirar cómo son los intervalos
+        print(f"\n--- {turno.upper()} ---")
+        print(ia.describe())
+        print("\nValores más frecuentes:")
+        print(ia.value_counts().head(20))
+
         if len(ia) < 10:
             print(f"[AVISO] Turno {turno}: muy pocos datos ({len(ia)}), se omite.")
             continue
         nombre, params = ajustar_distribucion(ia, turno)
-        guardar_config(turno, nombre, params)
+        guardar_config(turno, ESCENARIO_DEFAULT, nombre, params)
 
     print("\n[OK] Configs generados para los 3 turnos.")
     print("\nEjemplos de generación:")

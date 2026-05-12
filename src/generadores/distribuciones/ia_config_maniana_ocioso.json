@@ -1,8 +1,0 @@
-{
-    "nombre_dist": "laplace_asymmetric",
-    "params": {
-        "kappa": 2.9790466582312428e-06,
-        "loc": 0.9999999064857894,
-        "scale": 0.00019449569915791422
-    }
-}
