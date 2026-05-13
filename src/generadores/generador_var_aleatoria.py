@@ -41,11 +41,11 @@ class GeneradorVariablesAleatorias:
         valor = self._gen_ia[turno].generar()
 
         # Factor de congestión
-        factor_congestion = 0.3
+        factor_congestion = 0.18
 
         valor = valor * factor_congestion
 
-        print(f"[IA] turno={turno.name:<8} original={valor/factor_congestion:.2f}  ajustado={valor:.2f}")
+        #print(f"[IA] turno={turno.name:<8} original={valor/factor_congestion:.2f}  ajustado={valor:.2f}")
         
         return valor
 
@@ -56,10 +56,10 @@ class GeneradorVariablesAleatorias:
     def generar_nivel_urgencia(self, turno: Turno) -> NivelUrgencia:
         nivel = self._gen_triage.generar(turno)
 
-        self._log(
-            f"[TRIAGE] turno={turno.name:<8} "
-            f"nivel={nivel.name}"
-        )
+        #self._log(
+        #    f"[TRIAGE] turno={turno.name:<8} "
+        #    f"nivel={nivel.name}"
+        #)
 
         return nivel
 
@@ -70,9 +70,9 @@ class GeneradorVariablesAleatorias:
     def generar_tiempo_atencion(self) -> float:
         valor = self._gen_tiempo.generar()
 
-        self._log(
-            f"[TA] valor={valor:.2f}"
-        )
+        #self._log(
+        #    f"[TA] valor={valor:.2f}"
+        #)
 
         return valor
 

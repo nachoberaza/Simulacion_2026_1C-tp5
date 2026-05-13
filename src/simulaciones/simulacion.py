@@ -185,7 +185,7 @@ class SimulacionHospital:
                 self.NTe += 1
                 self.TPSe[i] = self.T + ta
             else:
-                if self._debe_abandonar(self.NSE):
+                if self._debe_abandonar(self.NSE+self._Pe()):
                     self.NAb += 1
                     return
                 self.STLLe += self.T 
@@ -222,7 +222,7 @@ class SimulacionHospital:
                 #self.NEncoladosC += 1
                 self.TPSc[j] = self.T + ta
             else:
-                if self._debe_abandonar(self.NSC):
+                if self._debe_abandonar(self.NSC+self._Pc()):
                     self.NAb += 1
                     return
                 self.STLLc += self.T  # solo si es atendido directo
@@ -354,8 +354,9 @@ class SimulacionHospital:
         PPSe = (self.STSe - self.STLLe) / self.NTe if self.NTe > 0 else 0.0
         PPSc = (self.STSc - self.STLLc) / self.NTc if self.NTc > 0 else 0.0
 
-        total = self.NTe + self.NTc + self.PD + self.NAb
+        total = self.NTe + self.NTc 
         PA = (self.NAb / total * 100) if total > 0 else 0.0
+        PPD = (self.PD / total * 100) if total > 0 else 0.0
 
         return {
             "turno": self.turno_actual.name,
@@ -366,10 +367,10 @@ class SimulacionHospital:
             "tpe_clinico": round(TPEC, 4),
             "tpps_especialista": round(PPSe, 4),
             "tpps_clinico": round(PPSc, 4),
-            "porcentaje_abandono": round(PA, 2),
-            "pacientes_derivados": self.PD,
+            "porcentaje_arrepentimiento": round(PA, 2),
+            "porcentaje_derivados": round(PPD,2),
             "atendidos_especialista": self.NTe,
             "atendidos_clinico": self.NTc,
-            "abandonos": self.NAb,
+            "arrepentimientos": self.NAb,
             "total_ingresados": total,
         }

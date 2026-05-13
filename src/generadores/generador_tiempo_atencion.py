@@ -1,6 +1,7 @@
 from pathlib import Path
 from fitter import Fitter
 from scipy import stats
+import matplotlib.pyplot as plt
 import pandas as pd
 import json
 
@@ -16,6 +17,21 @@ WAIT_COL = "Patient Waittime"
 CONFIG_PATH = Path(__file__).parent / "distribuciones" / "tiempo_atencion_config.json"
 
 BINS_HIST = 50
+
+# Estilo oscuro con fondo transparente (se aplica una sola vez)
+plt.rcParams.update({
+    "figure.facecolor": "none",
+    "axes.facecolor":   "none",
+    "axes.edgecolor":   "#FFFFFF44",
+    "axes.labelcolor":  "#CCCCCC",
+    "text.color":       "#FFFFFF",
+    "xtick.color":      "#CCCCCC",
+    "ytick.color":      "#CCCCCC",
+    "grid.color":       "#FFFFFF22",
+    "grid.linestyle":   "--",
+    "legend.facecolor": "#00000099",
+    "legend.edgecolor": "#FFFFFF44",
+})
 
 
 # =============================================================================
@@ -121,6 +137,11 @@ def ajustar_distribucion(serie: pd.Series):
     print(f"Distribución : {nombre}")
 
     print(f"Parámetros   : {params}")
+
+    fitter.summary(3)
+    plt.title("FDP ajustada — Tiempo de Atención", fontweight="bold")
+    plt.savefig(CONFIG_PATH.parent / "fdp_tiempo_atencion.png", dpi=180, transparent=True, bbox_inches="tight")
+    plt.show()
 
     return nombre, params
 

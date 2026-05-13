@@ -23,6 +23,21 @@ TURNOS = {
     "noche":   None,      # 23:00 – 07:00 (resto)
 }
 
+# Estilo oscuro con fondo transparente (se aplica una sola vez)
+plt.rcParams.update({
+    "figure.facecolor": "none",
+    "axes.facecolor":   "none",
+    "axes.edgecolor":   "#FFFFFF44",
+    "axes.labelcolor":  "#CCCCCC",
+    "text.color":       "#FFFFFF",
+    "xtick.color":      "#CCCCCC",
+    "ytick.color":      "#CCCCCC",
+    "grid.color":       "#FFFFFF22",
+    "grid.linestyle":   "--",
+    "legend.facecolor": "#00000099",
+    "legend.edgecolor": "#FFFFFF44",
+})
+
 
 # =============================================================================
 # CLASE GENERADOR
@@ -87,6 +102,12 @@ def ajustar_distribucion(ia: pd.Series, turno: str):
     params = best[nombre]
     print(f"  Mejor distribución: {nombre}")
     print(f"  Parámetros        : {params}")
+
+    fitter.summary(3)
+    plt.title(f"FDP ajustada — IA {turno}", fontweight="bold")
+    plt.savefig(DIST_DIR / f"fdp_ia_{turno}.png", dpi=180, transparent=True, bbox_inches="tight")
+    plt.show()
+
     return nombre, params
 
 
@@ -105,7 +126,6 @@ def guardar_config(turno: str, escenario: str, nombre: str, params: dict):
 def cargar_generador_desde_json(turno: str, escenario: str) -> GeneradorIA:
     file = f"ia_config_{turno}_{escenario}.json"
     path = DIST_DIR / file
-    
 
     with open(path, "r") as f:
         data = json.load(f)
